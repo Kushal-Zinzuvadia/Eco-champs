@@ -17,7 +17,8 @@ app.get("/", (req, res) => {
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/logs", require("./routes/logs"));
 app.use("/api/users", userRoutes);
-// (more to come)
+app.use("/api/challenges", require("./routes/challenges"));
+app.use("/api/leaderboard", require("./routes/leaderboard"));
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);

@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const { addLog, getLogsByUser, deleteLog } = require("../controllers/logsController");
+const auth = require("../middlewares/auth");
 
-// Test route for /api/logs
-router.get("/test", (req, res) => {
-  res.json({ message: "Logs route working!" });
-});
+// All log routes require authentication
+router.post("/", auth, addLog);
+router.get("/:userId", auth, getLogsByUser);
+router.delete("/:id", auth, deleteLog);
 
 module.exports = router;
