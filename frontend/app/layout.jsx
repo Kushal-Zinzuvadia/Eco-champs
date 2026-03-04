@@ -9,19 +9,19 @@ import { useEffect } from "react"
 const inter = Inter({ subsets: ["latin"] })
 
 function ClientGuard({ children }) {
-  const { user, token, loading } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
     const publicRoutes = ["/login", "/signup"]
-    if (!loading && !token && !publicRoutes.includes(pathname)) {
+    if (!loading && !user && !publicRoutes.includes(pathname)) {
       router.replace("/login")
     }
-    if (!loading && token && publicRoutes.includes(pathname)) {
+    if (!loading && user && publicRoutes.includes(pathname)) {
       router.replace("/dashboard")
     }
-  }, [token, loading, pathname, router])
+  }, [user, loading, pathname, router])
 
   return children
 }

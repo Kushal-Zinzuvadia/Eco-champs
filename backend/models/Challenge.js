@@ -7,7 +7,8 @@ const challengeSchema = new mongoose.Schema({
   endDate: Date,
   tasks: [String],
   rewardPoints: Number,
-  participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", default: [] }],
+  completedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", default: [] }],
   isActive: Boolean
 });
 

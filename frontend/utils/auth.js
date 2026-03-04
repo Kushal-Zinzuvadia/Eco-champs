@@ -1,20 +1,3 @@
-// Helper functions for authentication
-
-// Store token in localStorage
-export const setToken = (token) => {
-  localStorage.setItem("ecoChamps_token", token)
-}
-
-// Get token from localStorage
-export const getToken = () => {
-  return localStorage.getItem("ecoChamps_token")
-}
-
-// Remove token from localStorage
-export const removeToken = () => {
-  localStorage.removeItem("ecoChamps_token")
-}
-
 // Store user data in localStorage
 export const setUser = (user) => {
   localStorage.setItem("ecoChamps_user", JSON.stringify(user))
@@ -31,13 +14,12 @@ export const removeUser = () => {
   localStorage.removeItem("ecoChamps_user")
 }
 
-// Check if user is authenticated
+// Check if user is authenticated (via presence of user entity, token is handled securely via cookies)
 export const isAuthenticated = () => {
-  return !!getToken()
+  return !!getUser()
 }
 
-// Logout user
-export const logout = () => {
-  removeToken()
+// Local storage clean up for front-end logout 
+export const clearAuthStorage = () => {
   removeUser()
 }

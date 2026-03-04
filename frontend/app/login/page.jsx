@@ -25,10 +25,10 @@ export default function LoginPage() {
 
     try {
       const response = await login({ email, password })
-      const { token, user } = response.data
+      const { user } = response.data
 
-      // Store token and user data
-      authLogin(user, token)
+      // Store user data
+      authLogin(user)
 
       // Redirect to dashboard
       router.push("/dashboard")

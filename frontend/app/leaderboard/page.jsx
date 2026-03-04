@@ -16,7 +16,7 @@ const categories = [
 ]
 
 export default function LeaderboardPage() {
-  const { user, token } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [leaderboardData, setLeaderboardData] = useState([])
   const [userStats, setUserStats] = useState({})
@@ -24,14 +24,14 @@ export default function LeaderboardPage() {
   const [activeCategory, setActiveCategory] = useState("weekly")
 
   useEffect(() => {
-    if (!token && !loading) {
+    if (!user && !loading) {
       router.push("/login")
     }
     const fetchLeaderboardData = async () => {
-      if (!token || !user) return
+      if (!user) return
       try {
         setLoading(true)
-        const leaderboardResponse = await getLeaderboard(activeCategory, token)
+        const leaderboardResponse = await getLeaderboard(activeCategory)
         // Add rank and highlight current user
         const data = leaderboardResponse.data.map((u, idx) => ({
           ...u,
@@ -52,7 +52,7 @@ export default function LeaderboardPage() {
       }
     }
     fetchLeaderboardData()
-  }, [token, user, activeCategory, router])
+  }, [user, activeCategory, router])
 
   const handleCategoryChange = (category) => {
     setActiveCategory(category)
@@ -99,11 +99,10 @@ export default function LeaderboardPage() {
                 <button
                   key={category.name}
                   onClick={() => handleCategoryChange(category.value)}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                    activeCategory === category.value
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeCategory === category.value
                       ? "bg-white text-orange-600 shadow-sm"
                       : "text-gray-600 hover:text-gray-800"
-                  }`}
+                    }`}
                 >
                   {category.name}
                 </button>
@@ -159,13 +158,12 @@ export default function LeaderboardPage() {
                   {leaderboardData.slice(0, 3).map((user, index) => (
                     <Card
                       key={user._id}
-                      className={`text-center shadow-lg ${
-                        index === 0
+                      className={`text-center shadow-lg ${index === 0
                           ? "md:order-2 bg-gradient-to-b from-yellow-50 to-yellow-100 border-yellow-300"
                           : index === 1
                             ? "md:order-1 bg-gradient-to-b from-gray-50 to-gray-100 border-gray-300"
                             : "md:order-3 bg-gradient-to-b from-orange-50 to-orange-100 border-orange-300"
-                      }`}
+                        }`}
                     >
                       <CardContent className="p-6">
                         <div className="text-4xl mb-2">
@@ -196,15 +194,13 @@ export default function LeaderboardPage() {
                       {leaderboardData.map((user) => (
                         <div
                           key={user._id}
-                          className={`p-4 flex items-center justify-between hover:bg-gray-50 ${
-                            user.isCurrentUser ? "bg-green-50 border-l-4 border-l-green-500" : ""
-                          }`}
+                          className={`p-4 flex items-center justify-between hover:bg-gray-50 ${user.isCurrentUser ? "bg-green-50 border-l-4 border-l-green-500" : ""
+                            }`}
                         >
                           <div className="flex items-center space-x-4">
                             <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                                user.rank <= 3 ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-600"
-                              }`}
+                              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${user.rank <= 3 ? "bg-orange-100 text-orange-600" : "bg-gray-100 text-gray-600"
+                                }`}
                             >
                               {user.rank}
                             </div>

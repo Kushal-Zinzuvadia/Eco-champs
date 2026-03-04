@@ -4,9 +4,11 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Target, Clock, Users, Award, CheckCircle } from "lucide-react"
+import { ArrowLeft, Target, Clock, Users, Award, CheckCircle, Plus, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/auth-context"
-import { getAllChallenges, joinChallenge, completeChallenge } from "@/utils/api"
+import { getAllChallenges, joinChallenge, completeChallenge, createNewChallenge } from "@/utils/api"
 import { useRouter } from "next/navigation"
 
 const getDifficultyColor = (difficulty) => {
@@ -22,25 +24,47 @@ const getDifficultyColor = (difficulty) => {
   }
 }
 
+function getTimeLeft(endDate) {
+  if (!endDate) return "No deadline"
+  const now = new Date()
+  const end = new Date(endDate)
+  const diff = end - now
+  if (diff <= 0) return "Ended"
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  if (days > 0) return `${days}d`
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  return `${hours}h`
+}
+
 export default function ChallengesPage() {
-  const { user, token } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [challenges, setChallenges] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionInProgress, setActionInProgress] = useState(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [newChallenge, setNewChallenge] = useState({
+    title: "",
+    description: "",
+    rewardPoints: 50,
+    startDate: "",
+    endDate: "",
+    tasks: [""],
+  })
 
   useEffect(() => {
     // Redirect if not authenticated
-    if (!token && !loading) {
+    if (!user && !loading) {
       router.push("/login")
     }
 
     const fetchChallenges = async () => {
-      if (!token || !user) return
+      if (!user) return
 
       try {
         setLoading(true)
-        const response = await getAllChallenges(token)
+        const response = await getAllChallenges()
         setChallenges(response.data)
       } catch (error) {
         console.error("Error fetching challenges:", error)
@@ -50,20 +74,20 @@ export default function ChallengesPage() {
     }
 
     fetchChallenges()
-  }, [token, user, router])
+  }, [user, router])
 
   const handleJoinChallenge = async (challengeId) => {
-    if (!token || !user) return
+    if (!user) return
 
     setActionInProgress(challengeId)
     try {
-      await joinChallenge(challengeId, token)
+      await joinChallenge(challengeId)
 
       // Update challenges list
       setChallenges(
         challenges.map((challenge) =>
-          challenge.id === challengeId
-            ? { ...challenge, participants: [...challenge.participants, user.id] }
+          challenge._id === challengeId
+            ? { ...challenge, participants: [...(challenge.participants || []), user.id] }
             : challenge,
         ),
       )
@@ -75,16 +99,16 @@ export default function ChallengesPage() {
   }
 
   const handleCompleteChallenge = async (challengeId) => {
-    if (!token || !user) return
+    if (!user) return
 
     setActionInProgress(challengeId)
     try {
-      await completeChallenge(challengeId, token)
+      await completeChallenge(challengeId)
 
       // Update challenges list
       setChallenges(
         challenges.map((challenge) =>
-          challenge.id === challengeId ? { ...challenge, completedBy: [...challenge.completedBy, user.id] } : challenge,
+          challenge._id === challengeId ? { ...challenge, completedBy: [...(challenge.completedBy || []), user.id] } : challenge,
         ),
       )
     } catch (error) {
@@ -94,14 +118,73 @@ export default function ChallengesPage() {
     }
   }
 
+  const handleCreateChallenge = async () => {
+    if (!newChallenge.title.trim() || creating) return
+    if (!newChallenge.description.trim()) return
+
+    // Client-side date validation
+    const today = new Date().toISOString().split("T")[0]
+    if (newChallenge.startDate && newChallenge.startDate < today) {
+      alert("Start date cannot be in the past")
+      return
+    }
+    if (newChallenge.endDate && newChallenge.startDate && newChallenge.endDate <= newChallenge.startDate) {
+      alert("End date must be after start date")
+      return
+    }
+    if (Number(newChallenge.rewardPoints) < 1 || Number(newChallenge.rewardPoints) > 10000) {
+      alert("Reward points must be between 1 and 10,000")
+      return
+    }
+
+    setCreating(true)
+    try {
+      const payload = {
+        ...newChallenge,
+        tasks: newChallenge.tasks.filter(t => t.trim()),
+        rewardPoints: Number(newChallenge.rewardPoints),
+        isActive: true
+      }
+      const res = await createNewChallenge(payload)
+      setChallenges([res.data, ...challenges])
+      setNewChallenge({ title: "", description: "", rewardPoints: 50, startDate: "", endDate: "", tasks: [""] })
+      setShowCreateForm(false)
+    } catch (error) {
+      console.error("Error creating challenge:", error)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const updateTask = (index, value) => {
+    const updated = [...newChallenge.tasks]
+    updated[index] = value
+    setNewChallenge({ ...newChallenge, tasks: updated })
+  }
+
+  const addTaskField = () => {
+    setNewChallenge({ ...newChallenge, tasks: [...newChallenge.tasks, ""] })
+  }
+
+  const removeTaskField = (index) => {
+    const updated = newChallenge.tasks.filter((_, i) => i !== index)
+    setNewChallenge({ ...newChallenge, tasks: updated.length ? updated : [""] })
+  }
+
   // Filter challenges by status
+  const isUserInList = (list) => {
+    if (!list || !user) return false;
+    const userId = user.id || user._id;
+    return list.some(id => String(id) === String(userId) || (id && id._id === userId));
+  };
+
   const activeChallenges = challenges.filter(
-    (challenge) => challenge.participants.includes(user?.id) && !challenge.completedBy.includes(user?.id),
+    (challenge) => isUserInList(challenge.participants) && !isUserInList(challenge.completedBy),
   )
 
-  const availableChallenges = challenges.filter((challenge) => !challenge.participants.includes(user?.id))
+  const availableChallenges = challenges.filter((challenge) => !isUserInList(challenge.participants))
 
-  const completedChallenges = challenges.filter((challenge) => challenge.completedBy.includes(user?.id))
+  const completedChallenges = challenges.filter((challenge) => isUserInList(challenge.completedBy))
 
   if (!user && !loading) {
     return (
@@ -134,7 +217,113 @@ export default function ChallengesPage() {
             Challenges
           </h1>
           <p className="text-gray-600 mt-2">Take on eco-friendly challenges and earn points!</p>
+          <Button
+            className="mt-4 bg-yellow-600 hover:bg-yellow-700"
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            {showCreateForm ? <><X className="mr-2 h-4 w-4" /> Cancel</> : <><Plus className="mr-2 h-4 w-4" /> Create Challenge</>}
+          </Button>
         </div>
+
+        {/* Create Challenge Form */}
+        {showCreateForm && (
+          <Card className="mb-8 shadow-lg border-l-4 border-l-yellow-500">
+            <CardHeader>
+              <CardTitle className="text-lg text-yellow-600 flex items-center">
+                <Plus className="mr-2 h-5 w-5" /> Create New Challenge
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="challengeTitle">Title</Label>
+                  <Input
+                    id="challengeTitle"
+                    placeholder="e.g., Plastic-Free Week"
+                    value={newChallenge.title}
+                    onChange={(e) => setNewChallenge({ ...newChallenge, title: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="challengeDesc">Description</Label>
+                  <Input
+                    id="challengeDesc"
+                    placeholder="Describe the challenge..."
+                    value={newChallenge.description}
+                    onChange={(e) => setNewChallenge({ ...newChallenge, description: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="rewardPoints">Reward Points</Label>
+                    <Input
+                      id="rewardPoints"
+                      type="number"
+                      min="1"
+                      max="10000"
+                      value={newChallenge.rewardPoints}
+                      onChange={(e) => setNewChallenge({ ...newChallenge, rewardPoints: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      min={new Date().toISOString().split("T")[0]}
+                      value={newChallenge.startDate}
+                      onChange={(e) => setNewChallenge({ ...newChallenge, startDate: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDate">End Date</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      min={newChallenge.startDate || new Date().toISOString().split("T")[0]}
+                      value={newChallenge.endDate}
+                      onChange={(e) => setNewChallenge({ ...newChallenge, endDate: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Tasks</Label>
+                  <div className="space-y-2 mt-1">
+                    {newChallenge.tasks.map((task, idx) => (
+                      <div key={idx} className="flex items-center space-x-2">
+                        <Input
+                          placeholder={`Task ${idx + 1}`}
+                          value={task}
+                          onChange={(e) => updateTask(idx, e.target.value)}
+                        />
+                        {newChallenge.tasks.length > 1 && (
+                          <Button size="sm" variant="ghost" onClick={() => removeTaskField(idx)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button size="sm" variant="outline" onClick={addTaskField}>
+                      <Plus className="mr-1 h-3 w-3" /> Add Task
+                    </Button>
+                  </div>
+                </div>
+                <Button
+                  className="w-full bg-yellow-600 hover:bg-yellow-700"
+                  onClick={handleCreateChallenge}
+                  disabled={creating || !newChallenge.title.trim()}
+                >
+                  {creating ? "Creating..." : "Create Challenge"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {loading ? (
           <div className="space-y-8">
@@ -161,7 +350,7 @@ export default function ChallengesPage() {
               {activeChallenges.length > 0 ? (
                 <div className="grid md:grid-cols-2 gap-6">
                   {activeChallenges.map((challenge) => (
-                    <Card key={challenge.id} className="shadow-lg border-l-4 border-l-yellow-500">
+                    <Card key={challenge._id} className="shadow-lg border-l-4 border-l-yellow-500">
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-lg">{challenge.title}</CardTitle>
@@ -178,7 +367,7 @@ export default function ChallengesPage() {
                           <div className="flex justify-between text-sm">
                             <span className="flex items-center">
                               <Clock className="h-4 w-4 mr-1 text-orange-500" />
-                              {challenge.timeLeft} left
+                              {getTimeLeft(challenge.endDate)} left
                             </span>
                             <span className="flex items-center">
                               <Users className="h-4 w-4 mr-1 text-blue-500" />
@@ -186,7 +375,7 @@ export default function ChallengesPage() {
                             </span>
                             <span className="flex items-center">
                               <Award className="h-4 w-4 mr-1 text-purple-500" />
-                              {challenge.points} points
+                              {challenge.rewardPoints} points
                             </span>
                           </div>
                           <div>
@@ -203,10 +392,10 @@ export default function ChallengesPage() {
                           </div>
                           <Button
                             className="w-full bg-yellow-600 hover:bg-yellow-700"
-                            onClick={() => handleCompleteChallenge(challenge.id)}
-                            disabled={actionInProgress === challenge.id}
+                            onClick={() => handleCompleteChallenge(challenge._id)}
+                            disabled={actionInProgress === challenge._id}
                           >
-                            {actionInProgress === challenge.id ? "Processing..." : "Complete Challenge"}
+                            {actionInProgress === challenge._id ? "Processing..." : "Complete Challenge"}
                           </Button>
                         </div>
                       </CardContent>
@@ -228,7 +417,7 @@ export default function ChallengesPage() {
               {availableChallenges.length > 0 ? (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {availableChallenges.map((challenge) => (
-                    <Card key={challenge.id} className="shadow-lg hover:shadow-xl transition-shadow">
+                    <Card key={challenge._id} className="shadow-lg hover:shadow-xl transition-shadow">
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-lg">{challenge.title}</CardTitle>
@@ -245,7 +434,7 @@ export default function ChallengesPage() {
                           <div className="flex justify-between text-sm">
                             <span className="flex items-center">
                               <Clock className="h-4 w-4 mr-1 text-orange-500" />
-                              {challenge.duration}
+                              {getTimeLeft(challenge.endDate)}
                             </span>
                             <span className="flex items-center">
                               <Users className="h-4 w-4 mr-1 text-blue-500" />
@@ -253,15 +442,15 @@ export default function ChallengesPage() {
                             </span>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold text-green-600">{challenge.points}</div>
+                            <div className="text-2xl font-bold text-green-600">{challenge.rewardPoints}</div>
                             <div className="text-sm text-gray-600">points reward</div>
                           </div>
                           <Button
                             className="w-full bg-green-600 hover:bg-green-700"
-                            onClick={() => handleJoinChallenge(challenge.id)}
-                            disabled={actionInProgress === challenge.id}
+                            onClick={() => handleJoinChallenge(challenge._id)}
+                            disabled={actionInProgress === challenge._id}
                           >
-                            {actionInProgress === challenge.id ? "Processing..." : "Start Challenge"}
+                            {actionInProgress === challenge._id ? "Processing..." : "Start Challenge"}
                           </Button>
                         </div>
                       </CardContent>
@@ -283,7 +472,7 @@ export default function ChallengesPage() {
               {completedChallenges.length > 0 ? (
                 <div className="grid md:grid-cols-2 gap-6">
                   {completedChallenges.map((challenge) => (
-                    <Card key={challenge.id} className="shadow-lg bg-green-50 border-l-4 border-l-green-500">
+                    <Card key={challenge._id} className="shadow-lg bg-green-50 border-l-4 border-l-green-500">
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -297,7 +486,7 @@ export default function ChallengesPage() {
                             </p>
                           </div>
                           <div className="text-center">
-                            <div className="text-lg font-bold text-green-600">+{challenge.points}</div>
+                            <div className="text-lg font-bold text-green-600">+{challenge.rewardPoints}</div>
                             <div className="text-xs text-gray-600">points</div>
                           </div>
                         </div>

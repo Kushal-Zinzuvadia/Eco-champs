@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 const { getUserStats } = require('../controllers/userStatsController');
+const auth = require("../middlewares/auth");
 
 // @route   GET /api/users
 // @desc    Get all users
@@ -17,13 +18,13 @@ router.get("/", async (req, res) => {
 
 // @route   GET /api/users/:userId/stats
 // @desc    Get stats for a user
-// @access  Public (or protect with auth if needed)
-router.get('/:userId/stats', getUserStats);
+// @access  Protected
+router.get('/:userId/stats', auth, getUserStats);
 
 // @route   GET /api/users/:userId
 // @desc    Get a single user profile
-// @access  Public (for now)
-router.get('/:userId', async (req, res) => {
+// @access  Protected
+router.get('/:userId', auth, async (req, res) => {
   try {
     const user = await User.findById(req.params.userId).select('-passwordHash')
     if (!user) return res.status(404).json({ message: 'User not found' })

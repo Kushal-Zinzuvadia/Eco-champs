@@ -9,7 +9,7 @@ import { getUserProfile, getUserStats } from "@/utils/api"
 import { useAuth } from "@/context/auth-context"
 
 export default function ProfilePage() {
-  const { user, token } = useAuth()
+  const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -21,17 +21,17 @@ export default function ProfilePage() {
       setError("")
       try {
         if (!user || !user.id) throw new Error('User not logged in')
-        const profileRes = await getUserProfile(user.id, token)
+        const profileRes = await getUserProfile(user.id)
         setProfile(profileRes.data)
-        const statsRes = await getUserStats(user.id, token)
+        const statsRes = await getUserStats(user.id)
         setStats(statsRes.data)
       } catch (err) {
         setError('Failed to load profile')
       }
       setLoading(false)
     }
-    if (user && token) fetchProfile()
-  }, [user, token])
+    if (user) fetchProfile()
+  }, [user])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">

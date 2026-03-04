@@ -18,29 +18,29 @@ const dashboardButtons = [
 ]
 
 export default function DashboardPage() {
-  const { user, token, logout } = useAuth()
+  const { user, logout } = useAuth()
   const [recentLogs, setRecentLogs] = useState([])
   const [activeChallenges, setActiveChallenges] = useState([])
-  const [stats, setStats] = useState({ ecoScore: 0, itemsRecycled: 0, challengesCompleted: 0, rank: 0 })
+  const [stats, setStats] = useState({ ecoPoints: 0, itemsRecycled: 0, challengesCompleted: 0, rank: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!token || !user) return
+      if (!user) return
 
       try {
         setLoading(true)
 
         // Fetch user logs
-        const logsResponse = await getUserLogs(user.id, token)
+        const logsResponse = await getUserLogs(user.id)
         setRecentLogs(logsResponse.data.slice(0, 5))
 
         // Fetch user stats
-        const statsResponse = await getUserStats(user.id, token)
+        const statsResponse = await getUserStats(user.id)
         setStats(statsResponse.data)
 
         // Fetch challenges
-        const challengesResponse = await getAllChallenges(token)
+        const challengesResponse = await getAllChallenges()
         setActiveChallenges(
           challengesResponse.data
             .filter((challenge) => challenge.participants.includes(user.id) && !challenge.completedBy.includes(user.id))
@@ -54,7 +54,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboardData()
-  }, [token, user])
+  }, [user])
 
   if (!user && !loading) {
     return (
@@ -123,7 +123,7 @@ export default function DashboardPage() {
             Welcome to EcoChamps{user ? `, ${user.name}` : ""} 🌱
           </h1>
           <p className="text-xl md:text-2xl text-green-600 font-semibold">
-            Your current eco-score: {stats.ecoScore || 0}
+            Your current eco-score: {stats.ecoPoints || 0}
           </p>
         </div>
 

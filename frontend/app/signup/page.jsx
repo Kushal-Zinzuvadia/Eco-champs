@@ -26,12 +26,23 @@ export default function SignupPage() {
     setError("")
     setSuccess(false)
 
-    try {
-      const response = await signup({ name, email, password })
-      const { token, user } = response.data
+    if (name.trim().length < 2) {
+      setError("Name must be at least 2 characters")
+      setIsLoading(false)
+      return
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters")
+      setIsLoading(false)
+      return
+    }
 
-      // Store token and user data
-      authLogin(user, token)
+    try {
+      const response = await signup({ name: name.trim(), email, password })
+      const { user } = response.data
+
+      // Store user data
+      authLogin(user)
 
       setSuccess(true)
 

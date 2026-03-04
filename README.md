@@ -133,7 +133,7 @@ cd ../frontend
 npm install
 
 # Start frontend app
-npm start
+npm run dev
 ```
 
 ---

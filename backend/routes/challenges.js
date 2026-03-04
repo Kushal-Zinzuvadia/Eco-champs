@@ -10,7 +10,7 @@ const {
 
 router.get("/", getAllChallenges);
 router.post("/", auth, createChallenge);
-router.post("/join/:id", auth, joinChallenge);
+router.post("/:id/join", auth, joinChallenge);
 router.post("/:id/complete", auth, completeChallenge);
 
 module.exports = router;

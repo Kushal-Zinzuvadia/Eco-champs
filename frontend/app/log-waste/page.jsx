@@ -21,7 +21,7 @@ const wasteCategories = [
 ]
 
 export default function LogWastePage() {
-  const { user, token } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [selectedCategory, setSelectedCategory] = useState("")
   const [itemName, setItemName] = useState("")
@@ -38,16 +38,16 @@ export default function LogWastePage() {
 
   useEffect(() => {
     // Redirect if not authenticated
-    if (!token && !loading) {
+    if (!user && !loading) {
       router.push("/login")
     }
 
     const fetchLogs = async () => {
-      if (!token || !user) return
+      if (!user) return
 
       try {
         setLoading(true)
-        const response = await getUserLogs(user.id, token)
+        const response = await getUserLogs(user.id)
         const logs = response.data
 
         setRecentLogs(logs.slice(0, 5))
@@ -69,7 +69,7 @@ export default function LogWastePage() {
               const now = new Date()
               const weekStart = new Date(now)
               weekStart.setDate(now.getDate() - now.getDay())
-              weekStart.setHours(0,0,0,0)
+              weekStart.setHours(0, 0, 0, 0)
               return logDate >= weekStart
             }).reduce((sum, log) => sum + (log.quantity || 1), 0),
             target: 5,
@@ -83,11 +83,11 @@ export default function LogWastePage() {
     }
 
     fetchLogs()
-  }, [token, user, router])
+  }, [user, router])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!selectedCategory || !itemName || !token || !user) return
+    if (!selectedCategory || !itemName || !user) return
 
     setIsLogging(true)
 
@@ -99,7 +99,7 @@ export default function LogWastePage() {
         comment: itemName, // Store item name as comment
       }
 
-      await postWasteLog(logData, token)
+      await postWasteLog(logData)
 
       setShowSuccess(true)
       setSelectedCategory("")
@@ -107,7 +107,7 @@ export default function LogWastePage() {
       setQuantity(1)
 
       // Refresh logs
-      const response = await getUserLogs(user.id, token)
+      const response = await getUserLogs(user.id)
       setRecentLogs(response.data.slice(0, 5))
 
       setTimeout(() => setShowSuccess(false), 3000)
@@ -185,11 +185,10 @@ export default function LogWastePage() {
                           key={category.id}
                           type="button"
                           onClick={() => setSelectedCategory(category.id)}
-                          className={`p-4 rounded-lg border-2 transition-all ${
-                            selectedCategory === category.id
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
+                          className={`p-4 rounded-lg border-2 transition-all ${selectedCategory === category.id
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300"
+                            }`}
                         >
                           <div className="text-2xl mb-2">{category.icon}</div>
                           <div className="font-medium text-sm">{category.name}</div>
@@ -218,6 +217,7 @@ export default function LogWastePage() {
                         id="quantity"
                         type="number"
                         min="1"
+                        max="1000"
                         value={quantity}
                         onChange={(e) => setQuantity(Number.parseInt(e.target.value))}
                         required
